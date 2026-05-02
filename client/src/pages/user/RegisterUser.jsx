@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { User, ArrowRight, ArrowLeft } from 'lucide-react';
 
 function RegisterUser() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -24,7 +25,7 @@ function RegisterUser() {
       });
       const data = await response.json();
       if (response.ok) {
-        alert('User Registration successful!');
+        navigate('/user/dashboard');
       } else {
         alert(`Error: ${data.message}`);
       }

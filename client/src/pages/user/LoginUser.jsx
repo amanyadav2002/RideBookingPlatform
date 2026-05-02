@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { User, ArrowRight, ArrowLeft } from 'lucide-react';
 
 function LoginUser() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,7 +17,7 @@ function LoginUser() {
       });
       const data = await response.json();
       if (response.ok) {
-        alert('User Login successful!');
+        navigate('/user/dashboard');
       } else {
         alert(`Error: ${data.message}`);
       }

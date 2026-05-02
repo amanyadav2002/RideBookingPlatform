@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Car, ArrowRight, ArrowLeft } from 'lucide-react';
 
 function LoginDriver() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,7 +17,7 @@ function LoginDriver() {
       });
       const data = await response.json();
       if (response.ok) {
-        alert('Driver Login successful!');
+        navigate('/driver/dashboard');
       } else {
         alert(`Error: ${data.message}`);
       }

@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Car, ArrowRight, ArrowLeft } from 'lucide-react';
 
 function RegisterDriver() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -25,7 +26,7 @@ function RegisterDriver() {
       });
       const data = await response.json();
       if (response.ok) {
-        alert('Driver Registration successful!');
+        navigate('/driver/dashboard');
       } else {
         alert(`Error: ${data.message}`);
       }

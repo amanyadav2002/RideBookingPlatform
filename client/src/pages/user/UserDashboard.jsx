@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User as UserIcon, MapPin, Navigation, Search, Clock, CreditCard, LogOut, ChevronRight, Loader2, ArrowRight } from 'lucide-react';
+import { User as UserIcon, MapPin, Navigation, Search, Clock, CreditCard, LogOut, ChevronRight, Loader2, ArrowRight, Plus, Check, X, Wallet } from 'lucide-react';
 import Map from '../../components/Map';
 
 const BENGALURU_BBOX = {
@@ -38,6 +38,49 @@ function UserDashboard() {
   const [activeRide, setActiveRide] = useState(null);
   const [bookingLoading, setBookingLoading] = useState(false);
 
+  // Profile & Wallet Modal States
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileTab, setProfileTab] = useState('details'); // 'details' | 'wallet'
+  const [profileData, setProfileData] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [rechargeLoading, setRechargeLoading] = useState(false);
+  
+  // Edit Form Fields
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  
+  // Recharge Fields
+  const [rechargeAmount, setRechargeAmount] = useState('');
+  const [rechargeSuccess, setRechargeSuccess] = useState(false);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Fetch user profile details
+  const fetchUserProfile = async (userId) => {
+    if (!userId) return;
+    setProfileLoading(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/auth/user/${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setProfileData(data);
+        setEditName(data.user.name);
+        setEditEmail(data.user.email);
+        setEditPhone(data.user.phone);
+        
+        // Sync state & localStorage
+        setCurrentUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   // Load user details
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -45,8 +88,78 @@ function UserDashboard() {
       navigate('/user/login');
       return;
     }
-    setCurrentUser(JSON.parse(storedUser));
+    const parsedUser = JSON.parse(storedUser);
+    setCurrentUser(parsedUser);
+    fetchUserProfile(parsedUser._id);
   }, [navigate]);
+
+  // Update profile handler
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    if (!editName.trim() || !editEmail.trim() || !editPhone.trim()) {
+      setErrorMsg('All fields are required.');
+      return;
+    }
+    setUpdateLoading(true);
+    setErrorMsg('');
+    setUpdateSuccess(false);
+    try {
+      const res = await fetch(`http://localhost:5000/api/auth/user/${currentUser._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName, email: editEmail, phone: editPhone })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUpdateSuccess(true);
+        setCurrentUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        await fetchUserProfile(currentUser._id);
+        setTimeout(() => setUpdateSuccess(false), 3000);
+      } else {
+        setErrorMsg(data.message || 'Failed to update profile.');
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Error updating profile.');
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  // Recharge wallet handler
+  const handleRechargeWallet = async (e) => {
+    e.preventDefault();
+    const amount = parseFloat(rechargeAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setErrorMsg('Please enter a valid positive amount.');
+      return;
+    }
+    setRechargeLoading(true);
+    setErrorMsg('');
+    setRechargeSuccess(false);
+    try {
+      const res = await fetch(`http://localhost:5000/api/auth/user/${currentUser._id}/wallet/recharge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRechargeSuccess(true);
+        setRechargeAmount('');
+        await fetchUserProfile(currentUser._id);
+        setTimeout(() => setRechargeSuccess(false), 3000);
+      } else {
+        setErrorMsg(data.message || 'Failed to recharge wallet.');
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Error recharging wallet.');
+    } finally {
+      setRechargeLoading(false);
+    }
+  };
 
   // Polling for active ride
   useEffect(() => {
@@ -57,7 +170,13 @@ function UserDashboard() {
         const res = await fetch(`http://localhost:5000/api/rides/active-user/${currentUser._id}`);
         if (res.ok) {
           const data = await res.json();
-          setActiveRide(data.ride);
+          setActiveRide(prev => {
+            if (prev && !data.ride) {
+              // Ride status went from active to completed/cancelled. Refresh user wallet & stats!
+              fetchUserProfile(currentUser._id);
+            }
+            return data.ride;
+          });
         }
       } catch (err) {
         console.error('Error fetching active ride:', err);
@@ -260,12 +379,18 @@ function UserDashboard() {
 
         <div className="flex items-center gap-4">
           {currentUser && (
-            <div className="flex items-center gap-3 px-4 py-2 bg-slate-900 border border-slate-800 rounded-full">
-              <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center">
+            <button
+              onClick={() => {
+                setIsProfileOpen(true);
+                fetchUserProfile(currentUser._id);
+              }}
+              className="flex items-center gap-3 px-4 py-2 bg-slate-900 hover:bg-slate-850 active:scale-95 border border-slate-800 hover:border-purple-500/30 rounded-full cursor-pointer transition-all duration-200 group"
+            >
+              <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center group-hover:bg-purple-500/30 transition-colors">
                 <UserIcon className="w-3.5 h-3.5 text-purple-400" />
               </div>
-              <span className="text-sm font-medium pr-1 text-slate-300">{currentUser.name}</span>
-            </div>
+              <span className="text-sm font-medium pr-1 text-slate-300 group-hover:text-white transition-colors">{currentUser.name}</span>
+            </button>
           )}
           <button
             onClick={handleLogout}
@@ -485,15 +610,284 @@ function UserDashboard() {
         </div>
 
         {/* Map Area */}
-        <div className="flex-1 bg-slate-900 border-l border-slate-800 relative h-[450px] lg:h-auto min-h-[450px]">
-          <Map
-            pickup={pickup.lat ? pickup : null}
-            destination={destination.lat ? destination : null}
-            driverLocation={activeRide && activeRide.driverLocation ? activeRide.driverLocation : null}
-            onSelectCoords={handleMapSelect}
-          />
+        <div className="flex-1 p-6 lg:p-8 relative min-h-[450px] flex flex-col">
+          <div className="flex-1 bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl shadow-2xl overflow-hidden relative">
+            <Map
+              pickup={pickup.lat ? pickup : null}
+              destination={destination.lat ? destination : null}
+              driverLocation={activeRide && activeRide.driverLocation ? activeRide.driverLocation : null}
+              onSelectCoords={handleMapSelect}
+            />
+          </div>
         </div>
       </main>
+
+      {/* Profile Modal */}
+      {isProfileOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          {/* Glass Overlay */}
+          <div 
+            className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
+            onClick={() => {
+              setIsProfileOpen(false);
+              setErrorMsg('');
+              setRechargeAmount('');
+            }}
+          ></div>
+
+          {/* Modal Container */}
+          <div className="relative w-full max-w-md bg-slate-900/95 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+            {/* Visual gradient accent blob in background */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-fuchsia-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-800/80 flex items-center justify-between relative z-10">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                  <UserIcon className="w-4 h-4 text-purple-400" />
+                </div>
+                <h3 className="font-bold text-lg text-white">Your Profile</h3>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  setErrorMsg('');
+                  setRechargeAmount('');
+                }}
+                className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Tab Selector */}
+            <div className="flex border-b border-slate-800/80 px-6 relative z-10">
+              <button 
+                onClick={() => { setProfileTab('details'); setErrorMsg(''); }}
+                className={`py-3 px-4 text-sm font-semibold border-b-2 transition-all ${
+                  profileTab === 'details' 
+                    ? 'border-purple-500 text-purple-400' 
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Edit Info
+              </button>
+              <button 
+                onClick={() => { setProfileTab('wallet'); setErrorMsg(''); }}
+                className={`py-3 px-4 text-sm font-semibold border-b-2 transition-all ${
+                  profileTab === 'wallet' 
+                    ? 'border-purple-500 text-purple-400' 
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                E-Wallet & Stats
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 max-h-[70vh] overflow-y-auto relative z-10">
+              {profileLoading && !profileData ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+                  <p className="text-sm text-slate-400">Loading profile data...</p>
+                </div>
+              ) : (
+                <>
+                  {errorMsg && (
+                    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl flex items-center gap-2 animate-in slide-in-from-top-1 duration-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span>
+                      <span>{errorMsg}</span>
+                    </div>
+                  )}
+
+                  {/* Tab Content: Details */}
+                  {profileTab === 'details' && (
+                    <form onSubmit={handleUpdateProfile} className="space-y-4">
+                      {updateSuccess && (
+                        <div className="p-3 bg-green-500/10 border border-green-500/20 text-green-400 text-xs rounded-xl flex items-center gap-2">
+                          <Check className="w-4 h-4 text-green-400 shrink-0" />
+                          <span>Profile details updated successfully!</span>
+                        </div>
+                      )}
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Full Name</label>
+                        <div className="relative">
+                          <input 
+                            type="text" 
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="w-full bg-slate-950/60 border border-slate-800 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all"
+                            placeholder="John Doe"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email Address</label>
+                        <div className="relative">
+                          <input 
+                            type="email" 
+                            value={editEmail}
+                            onChange={(e) => setEditEmail(e.target.value)}
+                            className="w-full bg-slate-950/60 border border-slate-800 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all"
+                            placeholder="john@example.com"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Phone Number</label>
+                        <div className="relative">
+                          <input 
+                            type="text" 
+                            value={editPhone}
+                            onChange={(e) => setEditPhone(e.target.value)}
+                            className="w-full bg-slate-950/60 border border-slate-800 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all"
+                            placeholder="+91 XXXXX XXXXX"
+                          />
+                        </div>
+                      </div>
+
+                      <button 
+                        type="submit"
+                        disabled={updateLoading}
+                        className="w-full mt-2 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-semibold py-3 rounded-xl transition-all shadow-md shadow-purple-500/10 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {updateLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>Save Changes</>
+                        )}
+                      </button>
+                    </form>
+                  )}
+
+                  {/* Tab Content: Wallet & Stats */}
+                  {profileTab === 'wallet' && (
+                    <div className="space-y-6">
+                      {/* Premium Digital Credit Card */}
+                      <div className="relative h-44 rounded-2xl bg-gradient-to-br from-purple-600 via-fuchsia-600 to-indigo-700 p-6 flex flex-col justify-between overflow-hidden shadow-xl shadow-purple-500/15 border border-white/10">
+                        {/* Decorative background details */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-xl pointer-events-none"></div>
+                        <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-purple-500/20 rounded-full blur-2xl pointer-events-none"></div>
+                        
+                        <div className="flex justify-between items-start z-10">
+                          <div>
+                            <span className="text-[10px] uppercase tracking-widest text-purple-200 font-semibold">HumSafar E-Wallet</span>
+                            <h4 className="text-white font-bold text-lg mt-0.5">{profileData?.user.name}</h4>
+                          </div>
+                          <span className="text-2xl font-bold italic text-white/40 font-serif">HS</span>
+                        </div>
+
+                        {/* Card Chip & Balance */}
+                        <div className="flex justify-between items-end z-10">
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-purple-200 uppercase tracking-wider block">Available Balance</span>
+                            <span className="text-3xl font-extrabold text-white tracking-tight">
+                              ${(profileData?.user.walletBalance ?? 0).toFixed(2)}
+                            </span>
+                          </div>
+                          
+                          {/* Decorative Chip Icon */}
+                          <div className="w-10 h-7 rounded-md bg-yellow-400/80 border border-yellow-500/50 relative overflow-hidden flex flex-col gap-1 p-1 shadow">
+                            <div className="flex gap-1 h-[2px]">
+                              <div className="flex-1 bg-black/20"></div>
+                              <div className="flex-1 bg-black/20"></div>
+                            </div>
+                            <div className="flex gap-1 h-[2px] mt-1">
+                              <div className="flex-1 bg-black/20"></div>
+                              <div className="flex-1 bg-black/20"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Ride Statistics Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Hours taken rides */}
+                        <div className="bg-slate-950/50 border border-slate-800/85 p-4 rounded-xl flex items-center gap-3 shadow-inner">
+                          <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 shrink-0">
+                            <Clock className="w-4 h-4 animate-pulse" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Ride Hours</p>
+                            <p className="text-lg font-bold text-slate-100">{profileData?.totalHours ?? '0.0'} hrs</p>
+                          </div>
+                        </div>
+
+                        {/* Completed rides */}
+                        <div className="bg-slate-950/50 border border-slate-800/85 p-4 rounded-xl flex items-center gap-3 shadow-inner">
+                          <div className="w-9 h-9 rounded-lg bg-fuchsia-500/10 flex items-center justify-center text-fuchsia-400 shrink-0">
+                            <Navigation className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Total Trips</p>
+                            <p className="text-lg font-bold text-slate-100">
+                              {profileData?.completedCount ?? 0}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Top Up Section */}
+                      <form onSubmit={handleRechargeWallet} className="space-y-3 pt-2 border-t border-slate-800/80">
+                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Top Up Wallet</label>
+                        
+                        {rechargeSuccess && (
+                          <div className="p-3 bg-green-500/10 border border-green-500/20 text-green-400 text-xs rounded-xl flex items-center gap-2">
+                            <Check className="w-4 h-4 text-green-400 shrink-0" />
+                            <span>Wallet recharged successfully!</span>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          <input 
+                            type="number" 
+                            value={rechargeAmount}
+                            onChange={(e) => setRechargeAmount(e.target.value)}
+                            placeholder="Enter amount ($)"
+                            min="1"
+                            className="flex-1 bg-slate-950/60 border border-slate-800 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <button 
+                            type="submit"
+                            disabled={rechargeLoading}
+                            className="bg-purple-600 hover:bg-purple-500 text-white font-semibold px-5 rounded-xl transition-all shadow-md shadow-purple-500/10 disabled:opacity-50 flex items-center gap-1.5 text-sm shrink-0"
+                          >
+                            {rechargeLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Plus className="w-4 h-4" /> Top Up
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Preset Recharge Amounts */}
+                        <div className="flex gap-2 justify-between">
+                          {['10', '20', '50', '100'].map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => setRechargeAmount(preset)}
+                              className="flex-1 py-2 bg-slate-950/40 hover:bg-slate-850/50 border border-slate-800 hover:border-slate-700/80 rounded-xl text-xs text-slate-300 hover:text-white font-semibold transition-all"
+                            >
+                              +${preset}
+                            </button>
+                          ))}
+                        </div>
+                      </form>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

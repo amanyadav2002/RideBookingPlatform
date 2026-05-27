@@ -37,6 +37,23 @@ function Map({ pickup, destination, driverLocation, onSelectCoords }) {
     };
   }, []);
 
+  // Handle container resize to invalidate map size and keep alignment correct
+  useEffect(() => {
+    if (!mapRef.current || !mapContainerRef.current) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    });
+
+    resizeObserver.observe(mapContainerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
   // Handle map click for selecting coordinates
   useEffect(() => {
     if (!mapRef.current) return;
@@ -207,7 +224,7 @@ function Map({ pickup, destination, driverLocation, onSelectCoords }) {
   }, [pickup, destination, driverLocation]);
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative rounded-2xl overflow-hidden">
       <div ref={mapContainerRef} className="w-full h-full bg-slate-900" />
       {/* Map Guidelines overlay */}
       <div className="absolute top-4 left-4 z-[1000] bg-slate-900/90 backdrop-blur border border-slate-800 px-3 py-2 rounded-xl text-xs text-slate-400 pointer-events-none shadow-lg">

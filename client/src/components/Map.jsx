@@ -12,8 +12,8 @@ function Map({ pickup, destination, driverLocation, onSelectCoords }) {
   // Initialize Map
   useEffect(() => {
     if (!mapRef.current && mapContainerRef.current) {
-      // Create Map centered in Delhi/Mumbai general area, or fallback
-      const defaultCenter = [28.6139, 77.2090]; // New Delhi
+      // Create Map centered in Bengaluru, or fallback
+      const defaultCenter = [12.9716, 77.5946]; // Bengaluru
       mapRef.current = L.map(mapContainerRef.current, {
         zoomControl: false,
         attributionControl: false

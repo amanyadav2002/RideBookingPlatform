@@ -3,11 +3,33 @@ const router = express.Router();
 const Ride = require('../models/Ride');
 const Driver = require('../models/Driver');
 const User = require('../models/User');
+const isWithinBengaluru = (lat, lng) => {
+  const latitude = parseFloat(lat);
+  const longitude = parseFloat(lng);
+  return (
+    !isNaN(latitude) &&
+    !isNaN(longitude) &&
+    latitude >= 12.75 &&
+    latitude <= 13.22 &&
+    longitude >= 77.35 &&
+    longitude <= 77.85
+  );
+};
 
 // Request a ride
 router.post('/request', async (req, res) => {
   try {
     const { userId, pickup, destination, fare, vehicleType } = req.body;
+
+    // Validate coordinates are within Bengaluru boundaries
+    if (
+      !pickup || !pickup.lat || !pickup.lng ||
+      !destination || !destination.lat || !destination.lng ||
+      !isWithinBengaluru(pickup.lat, pickup.lng) ||
+      !isWithinBengaluru(destination.lat, destination.lng)
+    ) {
+      return res.status(400).json({ message: 'Booking is only allowed within the Bengaluru service region.' });
+    }
     
     // Check if user already has an active ride
     const activeRide = await Ride.findOne({

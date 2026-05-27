@@ -3,6 +3,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Car, MapPin, Navigation, DollarSign, Clock, Settings, LogOut, Loader2, CheckCircle2, User } from 'lucide-react';
 import Map from '../../components/Map';
 
+const BENGALURU_BBOX = {
+  minLat: 12.75,
+  maxLat: 13.22,
+  minLng: 77.35,
+  maxLng: 77.85
+};
+
+const isWithinBengaluru = (lat, lng) => {
+  return (
+    lat >= BENGALURU_BBOX.minLat &&
+    lat <= BENGALURU_BBOX.maxLat &&
+    lng >= BENGALURU_BBOX.minLng &&
+    lng <= BENGALURU_BBOX.maxLng
+  );
+};
+
 function DriverDashboard() {
   const navigate = useNavigate();
   const [currentDriver, setCurrentDriver] = useState(null);
@@ -27,8 +43,8 @@ function DriverDashboard() {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [activeRide, setActiveRide] = useState(null);
   
-  // Driver current simulated location (Defaulting to New Delhi center)
-  const [driverLocation, setDriverLocation] = useState({ lat: 28.6139, lng: 77.2090 });
+  // Driver current simulated location (Defaulting to Bengaluru center)
+  const [driverLocation, setDriverLocation] = useState({ lat: 12.9716, lng: 77.5946 });
   const [isSimulating, setIsSimulating] = useState(false);
   const simulationIntervalRef = useRef(null);
 
@@ -245,6 +261,10 @@ function DriverDashboard() {
   // Set driver position by clicking map (while offline/idle)
   const handleMapClick = (latlng) => {
     if (activeRide || isSimulating) return;
+    if (!isWithinBengaluru(latlng.lat, latlng.lng)) {
+      alert('Please set your location within Bengaluru.');
+      return;
+    }
     setDriverLocation(latlng);
   };
 

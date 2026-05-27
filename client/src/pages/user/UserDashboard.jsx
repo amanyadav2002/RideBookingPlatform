@@ -3,6 +3,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import { User as UserIcon, MapPin, Navigation, Search, Clock, CreditCard, LogOut, ChevronRight, Loader2, ArrowRight } from 'lucide-react';
 import Map from '../../components/Map';
 
+const BENGALURU_BBOX = {
+  minLat: 12.75,
+  maxLat: 13.22,
+  minLng: 77.35,
+  maxLng: 77.85
+};
+
+const isWithinBengaluru = (lat, lng) => {
+  return (
+    lat >= BENGALURU_BBOX.minLat &&
+    lat <= BENGALURU_BBOX.maxLat &&
+    lng >= BENGALURU_BBOX.minLng &&
+    lng <= BENGALURU_BBOX.maxLng
+  );
+};
+
 function UserDashboard() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
@@ -93,14 +109,29 @@ function UserDashboard() {
 
     setSearching(type);
     try {
+      // Prioritize/Bias search query to Bengaluru by appending ", Bengaluru" if not present
+      let formattedQuery = query;
+      const lowerQuery = query.toLowerCase();
+      if (!lowerQuery.includes('bengaluru') && !lowerQuery.includes('bangalore')) {
+        formattedQuery = `${query}, Bengaluru`;
+      }
+
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formattedQuery)}&limit=1`
       );
       const data = await response.json();
       if (data && data.length > 0) {
         const { lat, lon, display_name } = data[0];
+        const latitude = parseFloat(lat);
+        const longitude = parseFloat(lon);
+
+        if (!isWithinBengaluru(latitude, longitude)) {
+          alert('Our services are currently only available in Bengaluru. Please choose a location within Bengaluru city limits.');
+          return;
+        }
+
         const shortName = display_name.split(',')[0];
-        const coords = { name: shortName, lat: parseFloat(lat), lng: parseFloat(lon) };
+        const coords = { name: shortName, lat: latitude, lng: longitude };
         
         if (type === 'pickup') {
           setPickup(coords);
@@ -124,6 +155,12 @@ function UserDashboard() {
   // Handle map coordinates selection
   const handleMapSelect = async (latlng) => {
     const { lat, lng } = latlng;
+    
+    if (!isWithinBengaluru(lat, lng)) {
+      alert('Our services are currently only available in Bengaluru. Please choose a location within Bengaluru city limits.');
+      return;
+    }
+
     const placeholder = `📍 Position (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
 
     if (activeInput === 'pickup') {

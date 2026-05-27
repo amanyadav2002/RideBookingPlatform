@@ -25,6 +25,7 @@ function RegisterUser() {
       });
       const data = await response.json();
       if (response.ok) {
+        localStorage.setItem('user', JSON.stringify(data.user));
         navigate('/user/dashboard');
       } else {
         alert(`Error: ${data.message}`);

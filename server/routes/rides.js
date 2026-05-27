@@ -41,6 +41,19 @@ router.post('/request', async (req, res) => {
       return res.status(400).json({ message: 'You already have an active ride request or trip.' });
     }
 
+    // Check user's wallet balance
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const currentBalance = user.walletBalance !== undefined ? user.walletBalance : 200;
+    if (currentBalance < fare) {
+      return res.status(400).json({ 
+        message: `Insufficient wallet balance ($${currentBalance.toFixed(2)}). Please top up your wallet to book this ride (Fare: $${fare.toFixed(2)}).` 
+      });
+    }
+
     const newRide = new Ride({
       user: userId,
       pickup,
@@ -168,6 +181,14 @@ router.post('/complete', async (req, res) => {
 
     ride.status = 'completed';
     await ride.save();
+
+    // Deduct fare from user's wallet
+    const user = await User.findById(ride.user);
+    if (user) {
+      const currentBalance = user.walletBalance !== undefined ? user.walletBalance : 200;
+      user.walletBalance = Math.max(0, currentBalance - ride.fare);
+      await user.save();
+    }
 
     res.json({ message: 'Ride completed successfully', ride });
   } catch (error) {

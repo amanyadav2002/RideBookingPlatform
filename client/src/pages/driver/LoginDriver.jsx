@@ -17,6 +17,7 @@ function LoginDriver() {
       });
       const data = await response.json();
       if (response.ok) {
+        localStorage.setItem('driver', JSON.stringify(data.driver));
         navigate('/driver/dashboard');
       } else {
         alert(`Error: ${data.message}`);

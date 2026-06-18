@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Car, MapPin, Navigation, DollarSign, Clock, Settings, LogOut, Loader2, CheckCircle2, User } from 'lucide-react';
+import { Car, MapPin, Navigation, DollarSign, Clock, Settings, LogOut, Loader2, CheckCircle2, User, X, ChevronRight } from 'lucide-react';
 import Map from '../../components/Map';
 
 const BENGALURU_BBOX = {
@@ -42,6 +42,8 @@ function DriverDashboard() {
   const [isOnline, setIsOnline] = useState(false);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [activeRide, setActiveRide] = useState(null);
+  const [driverServiceType, setDriverServiceType] = useState(null);
+  const [showOnlinePreferences, setShowOnlinePreferences] = useState(false);
   
   // Driver current simulated location (Defaulting to Bengaluru center)
   const [driverLocation, setDriverLocation] = useState({ lat: 12.9716, lng: 77.5946 });
@@ -104,7 +106,7 @@ function DriverDashboard() {
         return;
       }
       try {
-        const res = await fetch('http://localhost:5000/api/rides/pending');
+        const res = await fetch(`http://localhost:5000/api/rides/pending?serviceType=${driverServiceType}`);
         if (res.ok) {
           const data = await res.json();
           setPendingRequests(data.rides);
@@ -124,7 +126,7 @@ function DriverDashboard() {
       clearInterval(rideInterval);
       clearInterval(requestInterval);
     };
-  }, [currentDriver, isOnline, activeRide]);
+  }, [currentDriver, isOnline, activeRide, driverServiceType]);
 
   // Accept a ride request
   const handleAcceptRide = async (rideId) => {
@@ -150,6 +152,46 @@ function DriverDashboard() {
     } catch (err) {
       console.error(err);
       alert('Failed to accept ride.');
+    }
+  };
+
+  const handleOpenPreferences = () => {
+    if (!!activeRide) return;
+    setShowOnlinePreferences(true);
+  };
+
+  const handleToggleOffline = async () => {
+    if (!!activeRide) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/auth/driver-status/${currentDriver._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isOnline: false })
+      });
+      if (res.ok) {
+        setIsOnline(false);
+        setDriverServiceType(null);
+        setPendingRequests([]);
+      }
+    } catch (err) {
+      console.error('Error going offline:', err);
+    }
+  };
+
+  const handleToggleOnline = async (serviceType) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/auth/driver-status/${currentDriver._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isOnline: true, serviceType })
+      });
+      if (res.ok) {
+        setIsOnline(true);
+        setDriverServiceType(serviceType);
+        setShowOnlinePreferences(false);
+      }
+    } catch (err) {
+      console.error('Error going online:', err);
     }
   };
 
@@ -328,7 +370,7 @@ function DriverDashboard() {
           <div className="flex items-center space-x-4">
             <span className="text-sm text-slate-400">Status:</span>
             <button
-              onClick={() => setIsOnline(!isOnline)}
+              onClick={isOnline ? handleToggleOffline : handleOpenPreferences}
               className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-300 focus:outline-none ${
                 isOnline ? 'bg-indigo-500' : 'bg-slate-700'
               }`}
@@ -341,7 +383,7 @@ function DriverDashboard() {
               />
             </button>
             <span className={`text-sm font-medium ${isOnline ? 'text-indigo-400' : 'text-slate-400'}`}>
-              {isOnline ? 'Online' : 'Offline'}
+              {isOnline ? `Online (${driverServiceType})` : 'Offline'}
             </span>
           </div>
         </header>
@@ -528,6 +570,54 @@ function DriverDashboard() {
           </div>
         </div>
       </main>
+
+      {/* VEHICLE AVAILABILITY PREFERENCES MODAL */}
+      {showOnlinePreferences && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl relative mx-4">
+            <div className="absolute top-[10%] right-[-10%] w-[150px] h-[150px] bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+            
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Car className="w-5 h-5 text-indigo-400" /> Service Availability
+              </h3>
+              <button
+                onClick={() => setShowOnlinePreferences(false)}
+                className="p-1 text-slate-400 hover:text-white bg-slate-800/40 rounded-full transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+              Select which vehicle category you are currently available with to receive ride requests. You will only receive bookings matching this tier.
+            </p>
+
+            <div className="space-y-3">
+              {[
+                { type: 'Economy', name: 'HumSafar Go', desc: 'Economy & compact rides', icon: '🚗' },
+                { type: 'Comfort', name: 'HumSafar Prime', desc: 'Comfortable sedans', icon: '🚘' },
+                { type: 'Elite', name: 'HumSafar Luxe', desc: 'Premium luxury vehicles', icon: '🏎️' }
+              ].map((vehicle) => (
+                <button
+                  key={vehicle.type}
+                  onClick={() => handleToggleOnline(vehicle.type)}
+                  className="w-full flex items-center justify-between p-4 bg-slate-950/40 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 rounded-2xl text-left transition-all group animate-in slide-in-from-bottom-2 duration-150"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{vehicle.icon}</span>
+                    <div>
+                      <p className="font-semibold text-slate-200 group-hover:text-white">{vehicle.name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{vehicle.desc}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

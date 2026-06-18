@@ -106,7 +106,12 @@ router.get('/active-driver/:driverId', async (req, res) => {
 // Get all pending ride requests for drivers
 router.get('/pending', async (req, res) => {
   try {
-    const rides = await Ride.find({ status: 'requested' }).populate('user', 'name phone');
+    const { serviceType } = req.query;
+    const filter = { status: 'requested' };
+    if (serviceType && serviceType !== 'undefined' && serviceType !== 'null') {
+      filter.vehicleType = serviceType;
+    }
+    const rides = await Ride.find(filter).populate('user', 'name phone');
     res.json({ rides });
   } catch (error) {
     console.error(error);

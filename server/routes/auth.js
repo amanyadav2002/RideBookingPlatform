@@ -204,4 +204,26 @@ router.post('/user/:id/wallet/recharge', async (req, res) => {
   }
 });
 
+// Update Driver Online Status and Selected Service Type in DB
+router.put('/driver-status/:driverId', async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const { isOnline, serviceType } = req.body;
+    
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver not found' });
+    }
+
+    driver.isOnline = isOnline;
+    driver.serviceType = isOnline ? serviceType : null;
+    await driver.save();
+
+    res.json({ message: 'Driver status updated successfully', driver });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error updating driver status' });
+  }
+});
+
 module.exports = router;

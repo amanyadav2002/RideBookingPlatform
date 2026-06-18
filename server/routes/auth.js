@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const Driver = require('../models/Driver');
 const Ride = require('../models/Ride');
+const DriverApplication = require('../models/DriverApplication');
 
 // Register User
 router.post('/register-user', async (req, res) => {
@@ -23,22 +24,120 @@ router.post('/register-user', async (req, res) => {
   }
 });
 
-// Register Driver
+// Register Driver Application
 router.post('/register-driver', async (req, res) => {
   try {
-    const { name, email, phone, vehicleModel, password } = req.body;
+    const { name, email, phone, vehicleModel } = req.body;
     
-    // Check if driver exists
-    const existingDriver = await Driver.findOne({ email });
-    if (existingDriver) return res.status(400).json({ message: 'Driver already exists' });
+    // Check if active driver already exists
+    const existingDriver = await Driver.findOne({ $or: [{ email }, { phone }] });
+    if (existingDriver) {
+      return res.status(400).json({ message: 'Driver with this email or phone number already exists' });
+    }
 
-    const newDriver = new Driver({ name, email, phone, vehicleModel, password });
-    await newDriver.save();
+    // Check if driver application already exists
+    const existingApp = await DriverApplication.findOne({ $or: [{ email }, { phone }] });
+    if (existingApp) {
+      if (existingApp.status === 'pending') {
+        return res.status(400).json({ message: 'A registration application is already pending for this email or phone' });
+      } else if (existingApp.status === 'approved') {
+        return res.status(400).json({ message: 'Your application is already approved. Please proceed to create your account.' });
+      } else {
+        // If rejected, let them re-apply by deleting the rejected application
+        await DriverApplication.deleteOne({ _id: existingApp._id });
+      }
+    }
+
+    const newApp = new DriverApplication({ name, email, phone, vehicleModel, status: 'pending' });
+    await newApp.save();
     
-    res.status(201).json({ message: 'Driver registered successfully', driver: newDriver });
+    res.status(201).json({ message: 'Driver application submitted successfully', application: newApp });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error submitting application' });
+  }
+});
+
+// Get all Driver Applications (Admin)
+router.get('/admin/applications', async (req, res) => {
+  try {
+    const apps = await DriverApplication.find().sort({ createdAt: -1 });
+    res.json(apps);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error fetching applications' });
+  }
+});
+
+// Approve Driver Application (Admin)
+router.post('/admin/applications/:id/approve', async (req, res) => {
+  try {
+    const app = await DriverApplication.findById(req.params.id);
+    if (!app) return res.status(404).json({ message: 'Application not found' });
+    
+    app.status = 'approved';
+    await app.save();
+    res.json({ message: 'Application approved successfully', application: app });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error approving application' });
+  }
+});
+
+// Reject Driver Application (Admin)
+router.post('/admin/applications/:id/reject', async (req, res) => {
+  try {
+    const app = await DriverApplication.findById(req.params.id);
+    if (!app) return res.status(404).json({ message: 'Application not found' });
+    
+    app.status = 'rejected';
+    await app.save();
+    res.json({ message: 'Application rejected successfully', application: app });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error rejecting application' });
+  }
+});
+
+// Create Driver Account after Admin approval
+router.post('/driver/create-account', async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    
+    if (!phone || !password) {
+      return res.status(400).json({ message: 'Phone number and password are required' });
+    }
+
+    // Find the approved application
+    const app = await DriverApplication.findOne({ phone, status: 'approved' });
+    if (!app) {
+      return res.status(400).json({ message: 'No approved registration application found for this phone number' });
+    }
+
+    // Double check if driver already exists
+    const existingDriver = await Driver.findOne({ $or: [{ email: app.email }, { phone: app.phone }] });
+    if (existingDriver) {
+      return res.status(400).json({ message: 'Driver account already exists' });
+    }
+
+    // Create the active driver account
+    const newDriver = new Driver({
+      name: app.name,
+      email: app.email,
+      phone: app.phone,
+      vehicleModel: app.vehicleModel,
+      password: password
+    });
+    
+    await newDriver.save();
+    
+    // Delete the application so it cannot be reused
+    await DriverApplication.deleteOne({ _id: app._id });
+
+    res.status(201).json({ message: 'Driver account created successfully', driver: newDriver });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error creating driver account' });
   }
 });
 

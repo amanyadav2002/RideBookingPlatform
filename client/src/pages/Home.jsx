@@ -182,9 +182,14 @@ function Home() {
             <Car className="w-5 h-5 text-indigo-500" />
             <span className="text-lg font-bold text-white">HumSafar</span>
           </div>
-          <p className="text-slate-500 text-sm">
-            © {new Date().getFullYear()} HumSafar Technologies. All rights reserved.
-          </p>
+          <div className="flex items-center gap-6">
+            <Link to="/admin/login" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">
+              Admin Login
+            </Link>
+            <p className="text-slate-500 text-sm">
+              © {new Date().getFullYear()} HumSafar Technologies. All rights reserved.
+            </p>
+          </div>
         </div>
       </footer>
     </div>

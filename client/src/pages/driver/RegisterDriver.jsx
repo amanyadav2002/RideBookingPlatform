@@ -8,9 +8,9 @@ function RegisterDriver() {
     name: '',
     email: '',
     phone: '',
-    vehicleModel: '',
-    password: ''
+    vehicleModel: ''
   });
+  const [submitted, setSubmitted] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -26,8 +26,7 @@ function RegisterDriver() {
       });
       const data = await response.json();
       if (response.ok) {
-        localStorage.setItem('driver', JSON.stringify(data.driver));
-        navigate('/driver/dashboard');
+        setSubmitted(true);
       } else {
         alert(`Error: ${data.message}`);
       }
@@ -63,131 +62,157 @@ function RegisterDriver() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl relative z-10">
         <div className="bg-slate-900/80 backdrop-blur-xl py-8 px-4 shadow-2xl shadow-indigo-500/10 sm:rounded-2xl sm:px-10 border border-slate-800">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label htmlFor="name" className="block text-sm font-medium text-slate-300">
-                  Full Name
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-3 border border-slate-700 rounded-xl shadow-sm bg-slate-800/50 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm"
-                    placeholder="John Doe"
-                  />
+          {submitted ? (
+            <div className="text-center py-6 space-y-6">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 animate-pulse">
+                  <Car className="w-8 h-8" />
                 </div>
               </div>
-
-              <div className="sm:col-span-1">
-                <label htmlFor="email" className="block text-sm font-medium text-slate-300">
-                  Email address
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-3 border border-slate-700 rounded-xl shadow-sm bg-slate-800/50 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm"
-                    placeholder="driver@example.com"
-                  />
-                </div>
+              <h3 className="text-2xl font-bold text-white">Application Submitted!</h3>
+              <p className="text-slate-400 text-sm max-w-md mx-auto leading-relaxed">
+                Thank you for applying to be a driver with HumSafar. Your details are currently under review by our Driver Admin team.
+              </p>
+              <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700/50 text-left text-xs text-slate-400 space-y-2">
+                <p><strong className="text-slate-200">Name:</strong> {formData.name}</p>
+                <p><strong className="text-slate-200">Email:</strong> {formData.email}</p>
+                <p><strong className="text-slate-200">Phone:</strong> {formData.phone}</p>
+                <p><strong className="text-slate-200">Vehicle:</strong> {formData.vehicleModel}</p>
               </div>
-
-              <div className="sm:col-span-1">
-                <label htmlFor="phone" className="block text-sm font-medium text-slate-300">
-                  Phone Number
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-3 border border-slate-700 rounded-xl shadow-sm bg-slate-800/50 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm"
-                    placeholder="+1 (555) 000-0000"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label htmlFor="vehicleModel" className="block text-sm font-medium text-slate-300">
-                  Vehicle Model & Year
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="vehicleModel"
-                    name="vehicleModel"
-                    type="text"
-                    required
-                    value={formData.vehicleModel}
-                    onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-3 border border-slate-700 rounded-xl shadow-sm bg-slate-800/50 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm"
-                    placeholder="e.g. Toyota Camry 2022"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label htmlFor="password" className="block text-sm font-medium text-slate-300">
-                  Password
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-3 border border-slate-700 rounded-xl shadow-sm bg-slate-800/50 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm"
-                    placeholder="••••••••"
-                  />
-                </div>
+              <p className="text-xs text-slate-500">
+                Once approved, you can create your password and set up your active account.
+              </p>
+              <div className="pt-4 flex flex-col gap-3">
+                <Link
+                  to="/driver/create-account"
+                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 transition-colors"
+                >
+                  Create Account (Approved Drivers)
+                </Link>
+                <Link
+                  to="/"
+                  className="text-sm font-medium text-slate-400 hover:text-white transition-colors"
+                >
+                  Return to Home
+                </Link>
               </div>
             </div>
+          ) : (
+            <>
+              <form className="space-y-6" onSubmit={handleSubmit}>
+                <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label htmlFor="name" className="block text-sm font-medium text-slate-300">
+                      Full Name
+                    </label>
+                    <div className="mt-1">
+                      <input
+                        id="name"
+                        name="name"
+                        type="text"
+                        required
+                        value={formData.name}
+                        onChange={handleChange}
+                        className="appearance-none block w-full px-3 py-3 border border-slate-700 rounded-xl shadow-sm bg-slate-800/50 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm"
+                        placeholder="John Doe"
+                      />
+                    </div>
+                  </div>
 
-            <div className="pt-2">
-              <button
-                type="submit"
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all focus:ring-offset-slate-900 group"
-              >
-                Create Driver Account <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-          </form>
+                  <div className="sm:col-span-1">
+                    <label htmlFor="email" className="block text-sm font-medium text-slate-300">
+                      Email address
+                    </label>
+                    <div className="mt-1">
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        value={formData.email}
+                        onChange={handleChange}
+                        className="appearance-none block w-full px-3 py-3 border border-slate-700 rounded-xl shadow-sm bg-slate-800/50 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm"
+                        placeholder="driver@example.com"
+                      />
+                    </div>
+                  </div>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-700" />
+                  <div className="sm:col-span-1">
+                    <label htmlFor="phone" className="block text-sm font-medium text-slate-300">
+                      Phone Number
+                    </label>
+                    <div className="mt-1">
+                      <input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        required
+                        value={formData.phone}
+                        onChange={handleChange}
+                        className="appearance-none block w-full px-3 py-3 border border-slate-700 rounded-xl shadow-sm bg-slate-800/50 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm"
+                        placeholder="+1 (555) 000-0000"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label htmlFor="vehicleModel" className="block text-sm font-medium text-slate-300">
+                      Vehicle Model & Year
+                    </label>
+                    <div className="mt-1">
+                      <input
+                        id="vehicleModel"
+                        name="vehicleModel"
+                        type="text"
+                        required
+                        value={formData.vehicleModel}
+                        onChange={handleChange}
+                        className="appearance-none block w-full px-3 py-3 border border-slate-700 rounded-xl shadow-sm bg-slate-800/50 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm"
+                        placeholder="e.g. Toyota Camry 2022"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all focus:ring-offset-slate-900 group"
+                  >
+                    Submit Application <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
+              </form>
+
+              <div className="mt-6">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-700" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-slate-900 text-slate-400">
+                      Looking to finalize account?
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-6 text-center space-y-2">
+                  <div>
+                    <Link
+                      to="/driver/create-account"
+                      className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                    >
+                      Approved? Create account here
+                    </Link>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    Already registered and created account? <Link to="/driver/login" className="text-indigo-400 hover:underline">Sign in here</Link>
+                  </div>
+                </div>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-slate-900 text-slate-400">
-                  Already have an account?
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 text-center">
-              <Link
-                to="/driver/login"
-                className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
-              >
-                Sign in here
-              </Link>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>

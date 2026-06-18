@@ -135,13 +135,18 @@ function LoginDriver() {
               </div>
             </div>
 
-            <div className="mt-6 text-center">
-              <Link
-                to="/driver/register"
-                className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
-              >
-                Register as a Driver
-              </Link>
+            <div className="mt-6 text-center space-y-2">
+              <div>
+                <Link
+                  to="/driver/register"
+                  className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  Register as a Driver
+                </Link>
+              </div>
+              <div className="text-xs text-slate-500">
+                Approved applicant? <Link to="/driver/create-account" className="text-indigo-400 hover:underline">Create your account here</Link>
+              </div>
             </div>
           </div>
         </div>

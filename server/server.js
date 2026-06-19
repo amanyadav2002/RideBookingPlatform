@@ -34,6 +34,16 @@ mongoose.connect(process.env.MONGODB_URI)
   })
   .catch((err) => console.error('❌ MongoDB Connection Error:', err));
 
+// DB Connection Check Middleware
+app.use('/api', (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      message: 'Database connection is not established. Please verify your MONGODB_URI in .env and check if your IP address is whitelisted on MongoDB Atlas.'
+    });
+  }
+  next();
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);

@@ -10,6 +10,10 @@ const Admin = require('../models/Admin');
 router.post('/register-user', async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
+
+    if (!name || !email || !phone || !password) {
+      return res.status(400).json({ message: 'All fields (name, email, phone, password) are required.' });
+    }
     
     // Check if user exists
     const existingUser = await User.findOne({ email });
@@ -21,6 +25,10 @@ router.post('/register-user', async (req, res) => {
     res.status(201).json({ message: 'User registered successfully', user: newUser });
   } catch (error) {
     console.error(error);
+    if (error.code === 11000) {
+      const duplicateField = Object.keys(error.keyPattern || {})[0] || 'email/phone';
+      return res.status(400).json({ message: `An account with this ${duplicateField} already exists.` });
+    }
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -29,6 +37,10 @@ router.post('/register-user', async (req, res) => {
 router.post('/register-driver', async (req, res) => {
   try {
     const { name, email, phone, vehicleModel } = req.body;
+
+    if (!name || !email || !phone || !vehicleModel) {
+      return res.status(400).json({ message: 'All fields (name, email, phone, vehicleModel) are required.' });
+    }
     
     // Check if active driver already exists
     const existingDriver = await Driver.findOne({ $or: [{ email }, { phone }] });
@@ -55,6 +67,10 @@ router.post('/register-driver', async (req, res) => {
     res.status(201).json({ message: 'Driver application submitted successfully', application: newApp });
   } catch (error) {
     console.error(error);
+    if (error.code === 11000) {
+      const duplicateField = Object.keys(error.keyPattern || {})[0] || 'email/phone';
+      return res.status(400).json({ message: `A driver application or account with this ${duplicateField} already exists.` });
+    }
     res.status(500).json({ message: 'Server error submitting application' });
   }
 });
@@ -163,6 +179,10 @@ router.post('/driver/create-account', async (req, res) => {
     res.status(201).json({ message: 'Driver account created successfully', driver: newDriver });
   } catch (error) {
     console.error(error);
+    if (error.code === 11000) {
+      const duplicateField = Object.keys(error.keyPattern || {})[0] || 'email/phone';
+      return res.status(400).json({ message: `A driver account with this ${duplicateField} already exists.` });
+    }
     res.status(500).json({ message: 'Server error creating driver account' });
   }
 });

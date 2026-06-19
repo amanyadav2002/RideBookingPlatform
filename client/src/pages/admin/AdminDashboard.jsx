@@ -175,7 +175,14 @@ function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Approved Drivers</p>
-                <h3 className="text-3xl font-bold mt-2 text-emerald-400">{approvedApps}</h3>
+                <div className="flex items-baseline gap-2 mt-2">
+                  <h3 className="text-3xl font-bold text-emerald-400">{approvedApps}</h3>
+                  {applications.filter(app => app.status === 'approved' && app.isAccountCreated).length > 0 && (
+                    <span className="text-xs text-emerald-500/80">
+                      ({applications.filter(app => app.status === 'approved' && app.isAccountCreated).length} Active)
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
                 <CheckCircle2 className="w-6 h-6" />
@@ -266,10 +273,13 @@ function AdminDashboard() {
                     {/* Status Badge */}
                     <span className={`px-2.5 py-1 rounded-full text-xxs font-extrabold uppercase tracking-wider ${
                       app.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                      app.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                      'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                      app.status === 'approved' 
+                        ? (app.isAccountCreated ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-550/30' : 'bg-teal-500/10 text-teal-400 border border-teal-550/20')
+                        : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                     }`}>
-                      {app.status}
+                      {app.status === 'approved' 
+                        ? (app.isAccountCreated ? 'approved (active)' : 'approved (pending setup)')
+                        : app.status}
                     </span>
                   </div>
 

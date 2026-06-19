@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Driver = require('../models/Driver');
 const Ride = require('../models/Ride');
 const DriverApplication = require('../models/DriverApplication');
+const Admin = require('../models/Admin');
 
 // Register User
 router.post('/register-user', async (req, res) => {
@@ -94,8 +95,27 @@ router.post('/admin/applications/:id/reject', async (req, res) => {
     await app.save();
     res.json({ message: 'Application rejected successfully', application: app });
   } catch (error) {
+  }
+});
+
+// Admin Login
+router.post('/admin/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username and password are required' });
+    }
+
+    const admin = await Admin.findOne({ username });
+    if (!admin || admin.password !== password) {
+      return res.status(400).json({ message: 'Invalid admin credentials' });
+    }
+
+    res.json({ message: 'Admin login successful', username: admin.username });
+  } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error rejecting application' });
+    res.status(500).json({ message: 'Server error during admin login' });
   }
 });
 
@@ -108,9 +128,14 @@ router.post('/driver/create-account', async (req, res) => {
       return res.status(400).json({ message: 'Phone number and password are required' });
     }
 
-    // Find the approved application
-    const app = await DriverApplication.findOne({ phone, status: 'approved' });
+    // Find the approved application that hasn't created an account yet
+    const app = await DriverApplication.findOne({ phone, status: 'approved', isAccountCreated: false });
     if (!app) {
+      // Check if it was already created
+      const alreadyCreated = await DriverApplication.findOne({ phone, status: 'approved', isAccountCreated: true });
+      if (alreadyCreated) {
+        return res.status(400).json({ message: 'Driver account has already been created for this phone number' });
+      }
       return res.status(400).json({ message: 'No approved registration application found for this phone number' });
     }
 
@@ -131,8 +156,9 @@ router.post('/driver/create-account', async (req, res) => {
     
     await newDriver.save();
     
-    // Delete the application so it cannot be reused
-    await DriverApplication.deleteOne({ _id: app._id });
+    // Mark the application as completed (account created) instead of deleting it
+    app.isAccountCreated = true;
+    await app.save();
 
     res.status(201).json({ message: 'Driver account created successfully', driver: newDriver });
   } catch (error) {

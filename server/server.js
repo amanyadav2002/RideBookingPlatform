@@ -14,7 +14,24 @@ app.use(express.json());
 
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ Connected to MongoDB (HumSafarDB)'))
+  .then(async () => {
+    console.log('✅ Connected to MongoDB (HumSafarDB)');
+    // Seed Admin
+    try {
+      const Admin = require('./models/Admin');
+      const adminExists = await Admin.findOne({ username: 'admin' });
+      if (!adminExists) {
+        const newAdmin = new Admin({
+          username: 'admin',
+          password: 'admin123'
+        });
+        await newAdmin.save();
+        console.log('✅ Default Admin user seeded successfully');
+      }
+    } catch (err) {
+      console.error('❌ Error seeding Admin user:', err);
+    }
+  })
   .catch((err) => console.error('❌ MongoDB Connection Error:', err));
 
 // Routes

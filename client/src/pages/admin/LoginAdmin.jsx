@@ -8,15 +8,26 @@ function LoginAdmin() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (username === 'admin' && password === 'admin123') {
-      localStorage.setItem('isAdmin', 'true');
-      navigate('/admin/dashboard');
-    } else {
-      setError('Invalid admin credentials');
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem('isAdmin', 'true');
+        navigate('/admin/dashboard');
+      } else {
+        setError(data.message || 'Invalid admin credentials');
+      }
+    } catch (err) {
+      console.error('Admin login failed', err);
+      setError('Server error, please try again.');
     }
   };
 

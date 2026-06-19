@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Car, MapPin, Navigation, DollarSign, Clock, Settings, LogOut, Loader2, CheckCircle2, User, X, ChevronRight } from 'lucide-react';
+import { Car, MapPin, Navigation, DollarSign, Clock, Settings, Loader2, CheckCircle2, User, X, ChevronRight } from 'lucide-react';
 import Map from '../../components/Map';
 
 const BENGALURU_BBOX = {
@@ -310,10 +310,7 @@ function DriverDashboard() {
     setDriverLocation(latlng);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('driver');
-    navigate('/driver/login');
-  };
+
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col md:flex-row">
@@ -326,12 +323,24 @@ function DriverDashboard() {
             </div>
             <span className="font-bold text-xl tracking-tight text-white">HumSafar</span>
           </div>
-          <button
-            onClick={handleLogout}
-            className="md:hidden p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-full transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
+          <div className="md:hidden flex items-center space-x-2">
+            <button
+              onClick={isOnline ? handleToggleOffline : handleOpenPreferences}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 focus:outline-none ${
+                isOnline ? 'bg-indigo-500' : 'bg-slate-700'
+              }`}
+              disabled={!!activeRide}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-300 ${
+                  isOnline ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className={`text-xs font-semibold ${isOnline ? 'text-indigo-400' : 'text-slate-400'}`}>
+              {isOnline ? 'Online' : 'Offline'}
+            </span>
+          </div>
         </div>
 
         <nav className="flex-1 p-4 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-x-visible">
@@ -339,26 +348,32 @@ function DriverDashboard() {
             <Navigation className="w-5 h-5" />
             <span className="font-medium">Dashboard</span>
           </a>
-          <div className="px-4 py-3 text-xs text-slate-500 font-semibold uppercase tracking-wider hidden md:block mt-4">
-            Driver Profile
-          </div>
-          {currentDriver && (
-            <div className="px-4 py-2 hidden md:block">
-              <p className="font-bold text-slate-200">{currentDriver.name}</p>
-              <p className="text-xs text-slate-400 mt-1">{currentDriver.vehicleModel}</p>
-              <p className="text-[10px] text-indigo-400 mt-1 uppercase tracking-wider font-semibold">Verified Partner</p>
-            </div>
-          )}
         </nav>
 
         <div className="p-4 border-t border-slate-800 hidden md:block">
-          <button
-            onClick={handleLogout}
-            className="flex items-center space-x-3 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors w-full"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="font-medium">Log out</span>
-          </button>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between px-2">
+              <span className="text-sm text-slate-400 font-medium">Status:</span>
+              <button
+                onClick={isOnline ? handleToggleOffline : handleOpenPreferences}
+                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-300 focus:outline-none ${
+                  isOnline ? 'bg-indigo-500' : 'bg-slate-700'
+                }`}
+                disabled={!!activeRide}
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 ${
+                    isOnline ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+            <div className="px-2 mt-1">
+              <span className={`text-sm font-medium ${isOnline ? 'text-indigo-400' : 'text-slate-400'}`}>
+                {isOnline ? `Online (${driverServiceType})` : 'Offline'}
+              </span>
+            </div>
+          </div>
         </div>
       </aside>
 
@@ -367,25 +382,6 @@ function DriverDashboard() {
         {/* Header */}
         <header className="h-20 border-b border-slate-800 bg-slate-900/50 backdrop-blur flex items-center justify-between px-8 z-10 shrink-0">
           <h1 className="text-xl md:text-2xl font-bold">Driver Portal</h1>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-slate-400">Status:</span>
-            <button
-              onClick={isOnline ? handleToggleOffline : handleOpenPreferences}
-              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-300 focus:outline-none ${
-                isOnline ? 'bg-indigo-500' : 'bg-slate-700'
-              }`}
-              disabled={!!activeRide}
-            >
-              <span
-                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 ${
-                  isOnline ? 'translate-x-7' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span className={`text-sm font-medium ${isOnline ? 'text-indigo-400' : 'text-slate-400'}`}>
-              {isOnline ? `Online (${driverServiceType})` : 'Offline'}
-            </span>
-          </div>
         </header>
 
         {/* Content */}

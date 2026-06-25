@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Car, MapPin, Navigation, DollarSign, Clock, Settings, Loader2, CheckCircle2, User, X, ChevronRight, Menu, ChevronDown, ChevronUp } from 'lucide-react';
+import { Car, MapPin, Navigation, DollarSign, Clock, Settings, Loader2, CheckCircle2, User, X, ChevronRight, Menu, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
 import Map from '../../components/Map';
 
 const BENGALURU_BBOX = {
@@ -55,6 +55,10 @@ function DriverDashboard() {
   const [isOverviewOpen, setIsOverviewOpen] = useState(false);
   const [isHoursOpen, setIsHoursOpen] = useState(false);
 
+  // Profile dropdown states
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const profileDropdownRef = useRef(null);
+
   // Profile modal states
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileData, setProfileData] = useState({ name: '', email: '', phone: '', vehicleModel: '', travelName: '' });
@@ -85,6 +89,36 @@ function DriverDashboard() {
     }
     setCurrentDriver(JSON.parse(storedDriver));
   }, [navigate]);
+
+  // Click outside listener for profile dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Helper: Get name initials
+  const getInitials = (name) => {
+    if (!name) return '';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  // Logout handler
+  const handleLogout = () => {
+    if (isOnline) {
+      handleToggleOffline();
+    }
+    localStorage.removeItem('driver');
+    navigate('/driver/login');
+  };
 
   // Fetch driver stats
   const fetchStats = async () => {
@@ -537,26 +571,90 @@ function DriverDashboard() {
             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Driver Portal</h1>
           </div>
           
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-full shadow-inner">
-              <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-indigo-400 animate-pulse' : 'bg-slate-500'}`} />
-              <span className={`text-xs font-semibold ${isOnline ? 'text-indigo-400' : 'text-slate-400'}`}>
-                {isOnline ? `Online (${driverServiceType === 'Economy' ? 'Go' : driverServiceType === 'Comfort' ? 'Prime' : 'Luxe'})` : 'Offline'}
-              </span>
-            </div>
+          {/* User Profile Dropdown */}
+          <div className="relative" ref={profileDropdownRef}>
             <button
-              onClick={isOnline ? handleToggleOffline : handleOpenPreferences}
-              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-300 focus:outline-none ${
-                isOnline ? 'bg-indigo-500' : 'bg-slate-700'
-              }`}
-              disabled={!!activeRide}
+              onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+              className="flex items-center space-x-3 p-1.5 pr-3 hover:bg-slate-800/60 active:bg-slate-800/80 rounded-xl transition-all border border-transparent hover:border-slate-800 focus:outline-none"
             >
-              <span
-                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 ${
-                  isOnline ? 'translate-x-7' : 'translate-x-1'
-                }`}
-              />
+              <div className="relative">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white text-sm shadow-md">
+                  {currentDriver?.name ? getInitials(currentDriver.name) : <User className="w-4 h-4" />}
+                </div>
+                <span className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-slate-900 ${isOnline ? 'bg-indigo-400 animate-pulse' : 'bg-slate-500'}`} />
+              </div>
+              <div className="hidden md:block text-left">
+                <p className="text-xs font-semibold text-slate-200 leading-tight truncate max-w-[120px]">{currentDriver?.name}</p>
+                <p className="text-[10px] text-slate-500 font-medium leading-tight">
+                  {isOnline ? 'Online' : 'Offline'}
+                </p>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
+
+            {isProfileDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-5 z-50 animate-in fade-in slide-in-from-top-3 duration-200">
+                {/* Driver Info Header */}
+                <div className="flex items-start space-x-3 border-b border-slate-800/80 pb-4 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white text-lg shadow-lg">
+                    {currentDriver?.name ? getInitials(currentDriver.name) : <User className="w-5 h-5" />}
+                  </div>
+                  <div className="text-left flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{currentDriver?.name}</p>
+                    <p className="text-xs text-slate-400 truncate mt-0.5">{currentDriver?.email}</p>
+                    <p className="text-xs text-slate-400 truncate mt-0.5">{currentDriver?.phone}</p>
+                  </div>
+                </div>
+
+                {/* Status Toggle & Details inside Dropdown */}
+                <div className="bg-slate-950/60 border border-slate-800/80 p-3.5 rounded-xl mb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Availability</p>
+                      <p className={`text-xs font-semibold mt-0.5 ${isOnline ? 'text-indigo-400' : 'text-slate-500'}`}>
+                        {isOnline ? `Online (${driverServiceType === 'Economy' ? 'Go' : driverServiceType === 'Comfort' ? 'Prime' : 'Luxe'})` : 'Offline'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={isOnline ? handleToggleOffline : handleOpenPreferences}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${
+                        isOnline ? 'bg-indigo-500' : 'bg-slate-700'
+                      }`}
+                      disabled={!!activeRide}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${
+                          isOnline ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      fetchDriverProfile();
+                      setIsProfileOpen(true);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-800/80 active:bg-slate-800 text-slate-300 hover:text-white transition-all text-xs font-semibold"
+                  >
+                    <Settings className="w-4 h-4 text-slate-400" />
+                    <span>Edit Profile Settings</span>
+                  </button>
+                  
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-rose-500/10 active:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-all text-xs font-semibold border border-transparent hover:border-rose-500/20"
+                  >
+                    <LogOut className="w-4 h-4 text-rose-400" />
+                    <span>Logout Account</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </header>
 

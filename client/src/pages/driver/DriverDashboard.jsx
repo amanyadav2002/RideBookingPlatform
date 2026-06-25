@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Car, MapPin, Navigation, DollarSign, Clock, Settings, Loader2, CheckCircle2, User, X, ChevronRight } from 'lucide-react';
+import { Car, MapPin, Navigation, DollarSign, Clock, Settings, Loader2, CheckCircle2, User, X, ChevronRight, Menu, ChevronDown, ChevronUp } from 'lucide-react';
 import Map from '../../components/Map';
 
 const BENGALURU_BBOX = {
@@ -50,8 +50,30 @@ function DriverDashboard() {
   const [isSimulating, setIsSimulating] = useState(false);
   const simulationIntervalRef = useRef(null);
 
+  // Sidebar and dropdown states
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isOverviewOpen, setIsOverviewOpen] = useState(false);
+  const [isHoursOpen, setIsHoursOpen] = useState(false);
+
+  // Profile modal states
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileData, setProfileData] = useState({ name: '', email: '', phone: '', vehicleModel: '', travelName: '' });
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [profileError, setProfileError] = useState('');
+
   // Database stats
-  const [stats, setStats] = useState({ earnings: 0, completedCount: 0, hoursOnline: '0.0' });
+  const [stats, setStats] = useState({
+    earnings: 0,
+    earningsToday: 0,
+    earningsMonth: 0,
+    completedCount: 0,
+    completedCountToday: 0,
+    completedCountMonth: 0,
+    hoursOnline: '0.0',
+    hoursOnlineToday: '0.0',
+    hoursOnlineMonth: '0.0'
+  });
   const [statsLoading, setStatsLoading] = useState(true);
 
   // Load driver details
@@ -71,7 +93,7 @@ function DriverDashboard() {
       const res = await fetch(`http://localhost:5000/api/rides/driver-stats/${currentDriver._id}`);
       if (res.ok) {
         const data = await res.json();
-        setStats(data);
+        setStats(prev => ({ ...prev, ...data }));
       }
     } catch (err) {
       console.error('Error fetching driver stats:', err);
@@ -83,6 +105,73 @@ function DriverDashboard() {
   useEffect(() => {
     fetchStats();
   }, [currentDriver]);
+
+  // Fetch driver profile
+  const fetchDriverProfile = async () => {
+    if (!currentDriver) return;
+    setProfileLoading(true);
+    setProfileError('');
+    setProfileSuccess(false);
+    try {
+      const res = await fetch(`http://localhost:5000/api/auth/driver/${currentDriver._id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setProfileData(data.driver);
+      } else {
+        const data = await res.json();
+        setProfileError(data.message || 'Failed to fetch profile details.');
+      }
+    } catch (err) {
+      console.error(err);
+      setProfileError('Failed to fetch profile.');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  // Update driver profile handler
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setProfileLoading(true);
+    setProfileError('');
+    setProfileSuccess(false);
+    try {
+      const res = await fetch(`http://localhost:5000/api/auth/driver/${currentDriver._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: profileData.name,
+          email: profileData.email,
+          phone: profileData.phone,
+          vehicleModel: profileData.vehicleModel,
+          travelName: profileData.travelName
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setProfileSuccess(true);
+        setProfileData(data.driver);
+        // Also update local storage stored driver info
+        const updatedLocalDriver = { 
+          ...currentDriver, 
+          name: data.driver.name, 
+          email: data.driver.email, 
+          phone: data.driver.phone, 
+          vehicleModel: data.driver.vehicleModel,
+          travelName: data.driver.travelName
+        };
+        localStorage.setItem('driver', JSON.stringify(updatedLocalDriver));
+        setCurrentDriver(updatedLocalDriver);
+      } else {
+        setProfileError(data.message || 'Failed to update profile.');
+      }
+    } catch (err) {
+      console.error(err);
+      setProfileError('Error updating profile.');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
   // Polling for active ride and pending requests
   useEffect(() => {
@@ -313,9 +402,19 @@ function DriverDashboard() {
 
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-slate-900 border-b md:border-r border-slate-800 flex flex-col">
+    <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col">
+      {/* Sidebar Backdrop Overlay */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 transition-opacity duration-300 animate-in fade-in"
+        />
+      )}
+
+      {/* Sidebar Drawer */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-80 bg-slate-900 border-r border-slate-800 flex flex-col transform transition-transform duration-300 ease-in-out ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
         <div className="p-6 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
@@ -323,55 +422,128 @@ function DriverDashboard() {
             </div>
             <span className="font-bold text-xl tracking-tight text-white">HumSafar</span>
           </div>
-          <div className="md:hidden flex items-center space-x-2">
-            <button
-              onClick={isOnline ? handleToggleOffline : handleOpenPreferences}
-              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 focus:outline-none ${
-                isOnline ? 'bg-indigo-500' : 'bg-slate-700'
-              }`}
-              disabled={!!activeRide}
-            >
-              <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-300 ${
-                  isOnline ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span className={`text-xs font-semibold ${isOnline ? 'text-indigo-400' : 'text-slate-400'}`}>
-              {isOnline ? 'Online' : 'Offline'}
-            </span>
-          </div>
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="p-1.5 text-slate-400 hover:text-white bg-slate-800/40 rounded-full transition-colors focus:outline-none"
+            title="Close Menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        <nav className="flex-1 p-4 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-x-visible">
-          <a href="#" className="flex items-center space-x-3 px-4 py-3 bg-indigo-500/10 text-indigo-400 rounded-xl whitespace-nowrap">
+        <nav className="flex-1 p-4 flex flex-col gap-3 overflow-y-auto">
+          <a href="#" className="flex items-center space-x-3 px-4 py-3 bg-indigo-500/10 text-indigo-400 rounded-xl transition-all font-medium">
             <Navigation className="w-5 h-5" />
-            <span className="font-medium">Dashboard</span>
+            <span>Dashboard</span>
           </a>
+
+          {/* Overview Dropdown */}
+          <div className="flex flex-col">
+            <button 
+              onClick={() => setIsOverviewOpen(!isOverviewOpen)}
+              className="flex items-center justify-between px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl transition-all font-medium text-left focus:outline-none"
+            >
+              <div className="flex items-center space-x-3">
+                <DollarSign className="w-5 h-5 text-emerald-400" />
+                <span>Overview</span>
+              </div>
+              {isOverviewOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            </button>
+            
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out pl-12 pr-2 ${
+              isOverviewOpen ? 'max-h-48 opacity-100 mt-2' : 'max-h-0 opacity-0 pointer-events-none'
+            }`}>
+              <div className="flex flex-col gap-3 py-1 text-sm border-l border-slate-800 pl-3">
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Today's Earnings</span>
+                  <span className="text-base font-bold text-white mt-0.5">${Number(stats.earningsToday || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">This Month</span>
+                  <span className="text-base font-bold text-white mt-0.5">${Number(stats.earningsMonth || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total Earnings</span>
+                  <span className="text-base font-bold text-white mt-0.5">${Number(stats.earnings || 0).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Hours Worked Dropdown */}
+          <div className="flex flex-col">
+            <button 
+              onClick={() => setIsHoursOpen(!isHoursOpen)}
+              className="flex items-center justify-between px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl transition-all font-medium text-left focus:outline-none"
+            >
+              <div className="flex items-center space-x-3">
+                <Clock className="w-5 h-5 text-indigo-400" />
+                <span>Hours Worked</span>
+              </div>
+              {isHoursOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            </button>
+            
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out pl-12 pr-2 ${
+              isHoursOpen ? 'max-h-48 opacity-100 mt-2' : 'max-h-0 opacity-0 pointer-events-none'
+            }`}>
+              <div className="flex flex-col gap-3 py-1 text-sm border-l border-slate-800 pl-3">
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Today's Hours</span>
+                  <span className="text-base font-bold text-white mt-0.5">{stats.hoursOnlineToday} hrs</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">This Month</span>
+                  <span className="text-base font-bold text-white mt-0.5">{stats.hoursOnlineMonth} hrs</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total Online</span>
+                  <span className="text-base font-bold text-white mt-0.5">{stats.hoursOnline} hrs</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Profile Settings Button */}
+          <button 
+            onClick={() => {
+              setIsProfileOpen(true);
+              fetchDriverProfile();
+              setIsSidebarOpen(false);
+            }}
+            className="flex items-center space-x-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl transition-all font-medium text-left focus:outline-none"
+          >
+            <User className="w-5 h-5 text-indigo-450" />
+            <span>Profile Settings</span>
+          </button>
         </nav>
 
-        <div className="p-4 border-t border-slate-800 hidden md:block">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between px-2">
-              <span className="text-sm text-slate-400 font-medium">Status:</span>
+        <div className="p-5 border-t border-slate-800 bg-slate-900/50">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-400 font-semibold">Active Status</span>
               <button
                 onClick={isOnline ? handleToggleOffline : handleOpenPreferences}
-                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-300 focus:outline-none ${
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 focus:outline-none ${
                   isOnline ? 'bg-indigo-500' : 'bg-slate-700'
                 }`}
                 disabled={!!activeRide}
               >
                 <span
-                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 ${
-                    isOnline ? 'translate-x-7' : 'translate-x-1'
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-300 ${
+                    isOnline ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />
               </button>
             </div>
-            <div className="px-2 mt-1">
-              <span className={`text-sm font-medium ${isOnline ? 'text-indigo-400' : 'text-slate-400'}`}>
-                {isOnline ? `Online (${driverServiceType})` : 'Offline'}
+            <div className="flex flex-col bg-slate-950/40 border border-slate-800/80 p-3 rounded-xl">
+              <span className={`text-xs font-semibold uppercase tracking-wider ${isOnline ? 'text-indigo-400' : 'text-slate-500'}`}>
+                {isOnline ? 'Available' : 'Offline'}
               </span>
+              {isOnline && driverServiceType && (
+                <span className="text-sm font-bold text-slate-200 mt-1">
+                  Service: HumSafar {driverServiceType === 'Economy' ? 'Go' : driverServiceType === 'Comfort' ? 'Prime' : 'Luxe'}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -380,8 +552,39 @@ function DriverDashboard() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-20 border-b border-slate-800 bg-slate-900/50 backdrop-blur flex items-center justify-between px-8 z-10 shrink-0">
-          <h1 className="text-xl md:text-2xl font-bold">Driver Portal</h1>
+        <header className="h-20 border-b border-slate-800 bg-slate-900/50 backdrop-blur flex items-center justify-between px-6 md:px-8 z-10 shrink-0">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 text-slate-400 hover:text-white bg-slate-800/55 hover:bg-slate-800 rounded-xl transition-all focus:outline-none"
+              title="Open Menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Driver Portal</h1>
+          </div>
+          
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-full shadow-inner">
+              <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-indigo-400 animate-pulse' : 'bg-slate-500'}`} />
+              <span className={`text-xs font-semibold ${isOnline ? 'text-indigo-400' : 'text-slate-400'}`}>
+                {isOnline ? `Online (${driverServiceType === 'Economy' ? 'Go' : driverServiceType === 'Comfort' ? 'Prime' : 'Luxe'})` : 'Offline'}
+              </span>
+            </div>
+            <button
+              onClick={isOnline ? handleToggleOffline : handleOpenPreferences}
+              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-300 focus:outline-none ${
+                isOnline ? 'bg-indigo-500' : 'bg-slate-700'
+              }`}
+              disabled={!!activeRide}
+            >
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 ${
+                  isOnline ? 'translate-x-7' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
         </header>
 
         {/* Content */}
@@ -399,7 +602,7 @@ function DriverDashboard() {
                 {statsLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin text-indigo-400 mt-1" />
                 ) : (
-                  <p className="text-2xl font-bold mt-0.5">${stats.earnings.toFixed(2)}</p>
+                  <p className="text-2xl font-bold mt-0.5">${Number(stats.earnings || 0).toFixed(2)}</p>
                 )}
               </div>
             </div>
@@ -611,6 +814,127 @@ function DriverDashboard() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PROFILE POPUP MODAL */}
+      {isProfileOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl relative mx-4">
+            <div className="absolute top-[10%] right-[-10%] w-[150px] h-[150px] bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+            
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <User className="w-5 h-5 text-indigo-400" /> Driver Profile
+              </h3>
+              <button
+                onClick={() => setIsProfileOpen(false)}
+                className="p-1 text-slate-400 hover:text-white bg-slate-800/40 rounded-full transition-colors focus:outline-none"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {profileLoading && !profileData.name ? (
+              <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                <p className="text-sm">Loading profile data...</p>
+              </div>
+            ) : (
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
+                {profileSuccess && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-3 rounded-xl text-xs font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" /> Profile details updated successfully!
+                  </div>
+                )}
+                {profileError && (
+                  <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3 rounded-xl text-xs font-semibold">
+                    {profileError}
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={profileData.name || ''}
+                      onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                      className="w-full bg-slate-950/60 border border-slate-850 hover:border-slate-750 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/80 text-white rounded-xl px-4 py-3 text-sm transition-all focus:outline-none"
+                      placeholder="Your Name"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Email Address</label>
+                    <input
+                      type="email"
+                      required
+                      value={profileData.email || ''}
+                      onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                      className="w-full bg-slate-950/60 border border-slate-850 hover:border-slate-750 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/80 text-white rounded-xl px-4 py-3 text-sm transition-all focus:outline-none"
+                      placeholder="name@example.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Phone Number</label>
+                    <input
+                      type="text"
+                      required
+                      value={profileData.phone || ''}
+                      onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                      className="w-full bg-slate-950/60 border border-slate-850 hover:border-slate-750 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/80 text-white rounded-xl px-4 py-3 text-sm transition-all focus:outline-none"
+                      placeholder="Phone number"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Vehicle Model</label>
+                    <input
+                      type="text"
+                      required
+                      value={profileData.vehicleModel || ''}
+                      onChange={(e) => setProfileData({ ...profileData, vehicleModel: e.target.value })}
+                      className="w-full bg-slate-950/60 border border-slate-850 hover:border-slate-750 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/80 text-white rounded-xl px-4 py-3 text-sm transition-all focus:outline-none"
+                      placeholder="e.g. Toyota Prius 2021"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Travels Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={profileData.travelName || ''}
+                      onChange={(e) => setProfileData({ ...profileData, travelName: e.target.value })}
+                      className="w-full bg-slate-950/60 border border-slate-850 hover:border-slate-750 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/80 text-white rounded-xl px-4 py-3 text-sm transition-all focus:outline-none"
+                      placeholder="e.g. Independent / Kaveri Travels"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="flex-1 bg-slate-800 hover:bg-slate-750 border border-slate-750 text-slate-300 font-semibold py-3 rounded-xl transition-all text-sm focus:outline-none"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={profileLoading}
+                    className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-indigo-500/20 text-sm flex items-center justify-center gap-2 focus:outline-none"
+                  >
+                    {profileLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

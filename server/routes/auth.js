@@ -349,6 +349,82 @@ router.post('/user/:id/wallet/recharge', async (req, res) => {
   }
 });
 
+// Get driver profile details
+router.get('/driver/:id', async (req, res) => {
+  try {
+    const driver = await Driver.findById(req.params.id);
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver not found' });
+    }
+
+    res.status(200).json({
+      driver: {
+        _id: driver._id,
+        name: driver.name,
+        email: driver.email,
+        phone: driver.phone,
+        vehicleModel: driver.vehicleModel,
+        travelName: driver.travelName,
+        role: driver.role,
+        isOnline: driver.isOnline,
+        serviceType: driver.serviceType,
+        totalOnlineTime: driver.totalOnlineTime,
+        createdAt: driver.createdAt
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error fetching driver details' });
+  }
+});
+
+// Update driver profile details
+router.put('/driver/:id', async (req, res) => {
+  try {
+    const { name, email, phone, vehicleModel, travelName } = req.body;
+    const driver = await Driver.findById(req.params.id);
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver not found' });
+    }
+
+    // Check if email already in use by another driver
+    if (email && email !== driver.email) {
+      const existingEmail = await Driver.findOne({ email });
+      if (existingEmail) {
+        return res.status(400).json({ message: 'Email is already in use by another account' });
+      }
+    }
+
+    driver.name = name || driver.name;
+    driver.email = email || driver.email;
+    driver.phone = phone || driver.phone;
+    driver.vehicleModel = vehicleModel || driver.vehicleModel;
+    driver.travelName = travelName !== undefined ? travelName : driver.travelName;
+
+    await driver.save();
+
+    res.status(200).json({
+      message: 'Profile updated successfully',
+      driver: {
+        _id: driver._id,
+        name: driver.name,
+        email: driver.email,
+        phone: driver.phone,
+        vehicleModel: driver.vehicleModel,
+        travelName: driver.travelName,
+        role: driver.role,
+        isOnline: driver.isOnline,
+        serviceType: driver.serviceType,
+        totalOnlineTime: driver.totalOnlineTime,
+        createdAt: driver.createdAt
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error updating driver profile' });
+  }
+});
+
 // Update Driver Online Status and Selected Service Type in DB
 router.put('/driver-status/:driverId', async (req, res) => {
   try {
@@ -358,6 +434,20 @@ router.put('/driver-status/:driverId', async (req, res) => {
     const driver = await Driver.findById(driverId);
     if (!driver) {
       return res.status(404).json({ message: 'Driver not found' });
+    }
+
+    const wasOnline = driver.isOnline;
+    
+    if (isOnline) {
+      if (!wasOnline) {
+        driver.lastOnlineTime = new Date();
+      }
+    } else {
+      if (wasOnline && driver.lastOnlineTime) {
+        const sessionHours = (new Date() - new Date(driver.lastOnlineTime)) / (1000 * 60 * 60);
+        driver.totalOnlineTime = (driver.totalOnlineTime || 0) + sessionHours;
+      }
+      driver.lastOnlineTime = null;
     }
 
     driver.isOnline = isOnline;

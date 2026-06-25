@@ -232,16 +232,56 @@ router.get('/driver-stats/:driverId', async (req, res) => {
       status: 'completed'
     });
 
-    const totalEarnings = completedRides.reduce((sum, r) => sum + r.fare, 0);
-    const count = completedRides.length;
+    const driver = await Driver.findById(driverId);
+    let activeSessionHours = 0;
+    if (driver && driver.isOnline && driver.lastOnlineTime) {
+      activeSessionHours = (Date.now() - new Date(driver.lastOnlineTime)) / (1000 * 60 * 60);
+    }
+    const dbTotalHours = driver ? (driver.totalOnlineTime || 0) : 0;
 
-    // We can simulate online hours based on ride count or just return a default value
-    const mockHours = (count * 0.4).toFixed(1);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    let earningsTotal = 0;
+    let earningsToday = 0;
+    let earningsMonth = 0;
+    
+    let countTotal = completedRides.length;
+    let countToday = 0;
+    let countMonth = 0;
+
+    completedRides.forEach(ride => {
+      const rideDate = new Date(ride.createdAt);
+      earningsTotal += ride.fare;
+      
+      if (rideDate >= todayStart) {
+        earningsToday += ride.fare;
+        countToday++;
+      }
+      if (rideDate >= monthStart) {
+        earningsMonth += ride.fare;
+        countMonth++;
+      }
+    });
+
+    const hoursToday = parseFloat((countToday * 0.4 + (driver && driver.isOnline ? activeSessionHours : 0)).toFixed(1));
+    const hoursMonth = parseFloat((countMonth * 0.4 + (driver && driver.isOnline ? activeSessionHours : 0)).toFixed(1));
+    const hoursTotal = parseFloat(Math.max(dbTotalHours + activeSessionHours, countTotal * 0.4 + activeSessionHours).toFixed(1));
 
     res.json({
-      earnings: totalEarnings,
-      completedCount: count,
-      hoursOnline: mockHours
+      earnings: earningsTotal,
+      earningsToday: earningsToday,
+      earningsMonth: earningsMonth,
+      completedCount: countTotal,
+      completedCountToday: countToday,
+      completedCountMonth: countMonth,
+      hoursOnline: hoursTotal.toFixed(1),
+      hoursOnlineToday: hoursToday.toFixed(1),
+      hoursOnlineMonth: hoursMonth.toFixed(1)
     });
   } catch (error) {
     console.error(error);

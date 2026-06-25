@@ -437,84 +437,57 @@ function DriverDashboard() {
             <span>Dashboard</span>
           </a>
 
-          {/* Overview Dropdown */}
-          <div className="flex flex-col">
-            <button 
-              onClick={() => setIsOverviewOpen(!isOverviewOpen)}
-              className="flex items-center justify-between px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl transition-all font-medium text-left focus:outline-none"
-            >
-              <div className="flex items-center space-x-3">
-                <DollarSign className="w-5 h-5 text-emerald-400" />
-                <span>Overview</span>
-              </div>
-              {isOverviewOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-            </button>
+          {/* Stats List */}
+          <div className="flex flex-row md:flex-col gap-4 md:mt-6 md:px-4 items-start border-l md:border-l-0 md:border-t border-slate-800 pt-0 md:pt-4 pl-4 md:pl-0">
+            <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider hidden md:block">
+              Stats Overview
+            </div>
             
-            <div className={`overflow-hidden transition-all duration-300 ease-in-out pl-12 pr-2 ${
-              isOverviewOpen ? 'max-h-48 opacity-100 mt-2' : 'max-h-0 opacity-0 pointer-events-none'
-            }`}>
-              <div className="flex flex-col gap-3 py-1 text-sm border-l border-slate-800 pl-3">
-                <div className="flex flex-col">
-                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Today's Earnings</span>
-                  <span className="text-base font-bold text-white mt-0.5">${Number(stats.earningsToday || 0).toFixed(2)}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">This Month</span>
-                  <span className="text-base font-bold text-white mt-0.5">${Number(stats.earningsMonth || 0).toFixed(2)}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total Earnings</span>
-                  <span className="text-base font-bold text-white mt-0.5">${Number(stats.earnings || 0).toFixed(2)}</span>
-                </div>
+            {/* Earnings */}
+            <div className="flex items-center space-x-3 py-1">
+              <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
+                <DollarSign className="w-4 h-4" />
+              </div>
+              <div className="text-left">
+                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Earnings</p>
+                {statsLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                ) : (
+                  <p className="text-sm font-bold text-slate-200">${stats.earnings.toFixed(2)}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Completed Rides */}
+            <div className="flex items-center space-x-3 py-1">
+              <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0">
+                <Navigation className="w-4 h-4" />
+              </div>
+              <div className="text-left">
+                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Completed</p>
+                {statsLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />
+                ) : (
+                  <p className="text-sm font-bold text-slate-200">{stats.completedCount}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Hours Online */}
+            <div className="flex items-center space-x-3 py-1">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                <Clock className="w-4 h-4" />
+              </div>
+              <div className="text-left">
+                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Hours Online</p>
+                {statsLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                ) : (
+                  <p className="text-sm font-bold text-slate-200">{stats.hoursOnline} hrs</p>
+                )}
               </div>
             </div>
           </div>
-
-          {/* Hours Worked Dropdown */}
-          <div className="flex flex-col">
-            <button 
-              onClick={() => setIsHoursOpen(!isHoursOpen)}
-              className="flex items-center justify-between px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl transition-all font-medium text-left focus:outline-none"
-            >
-              <div className="flex items-center space-x-3">
-                <Clock className="w-5 h-5 text-indigo-400" />
-                <span>Hours Worked</span>
-              </div>
-              {isHoursOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-            </button>
-            
-            <div className={`overflow-hidden transition-all duration-300 ease-in-out pl-12 pr-2 ${
-              isHoursOpen ? 'max-h-48 opacity-100 mt-2' : 'max-h-0 opacity-0 pointer-events-none'
-            }`}>
-              <div className="flex flex-col gap-3 py-1 text-sm border-l border-slate-800 pl-3">
-                <div className="flex flex-col">
-                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Today's Hours</span>
-                  <span className="text-base font-bold text-white mt-0.5">{stats.hoursOnlineToday} hrs</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">This Month</span>
-                  <span className="text-base font-bold text-white mt-0.5">{stats.hoursOnlineMonth} hrs</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total Online</span>
-                  <span className="text-base font-bold text-white mt-0.5">{stats.hoursOnline} hrs</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Profile Settings Button */}
-          <button 
-            onClick={() => {
-              setIsProfileOpen(true);
-              fetchDriverProfile();
-              setIsSidebarOpen(false);
-            }}
-            className="flex items-center space-x-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl transition-all font-medium text-left focus:outline-none"
-          >
-            <User className="w-5 h-5 text-indigo-450" />
-            <span>Profile Settings</span>
-          </button>
         </nav>
 
         <div className="p-5 border-t border-slate-800 bg-slate-900/50">
@@ -590,49 +563,6 @@ function DriverDashboard() {
         {/* Content */}
         <div className="flex-1 overflow-auto p-6 md:p-8 relative flex flex-col gap-6">
           <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-indigo-600/5 rounded-full blur-3xl -z-10"></div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 shrink-0">
-            <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-2xl p-5 shadow-xl flex items-center gap-4">
-              <div className="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-xl flex items-center justify-center shrink-0">
-                <DollarSign className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Earnings</h3>
-                {statsLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-indigo-400 mt-1" />
-                ) : (
-                  <p className="text-2xl font-bold mt-0.5">${Number(stats.earnings || 0).toFixed(2)}</p>
-                )}
-              </div>
-            </div>
-            <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-2xl p-5 shadow-xl flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-500/10 text-purple-400 rounded-xl flex items-center justify-center shrink-0">
-                <Navigation className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Completed Rides</h3>
-                {statsLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-purple-400 mt-1" />
-                ) : (
-                  <p className="text-2xl font-bold mt-0.5">{stats.completedCount}</p>
-                )}
-              </div>
-            </div>
-            <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-2xl p-5 shadow-xl flex items-center gap-4">
-              <div className="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center shrink-0">
-                <Clock className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Hours Online</h3>
-                {statsLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-emerald-400 mt-1" />
-                ) : (
-                  <p className="text-2xl font-bold mt-0.5">{stats.hoursOnline} hrs</p>
-                )}
-              </div>
-            </div>
-          </div>
 
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[400px]">
             {/* Map Area */}
